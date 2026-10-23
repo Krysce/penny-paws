@@ -455,7 +455,7 @@ function normalize(s){const b=blankState();s=JSON.parse(JSON.stringify(s||{}));c
 /* ================= Stockage & synchro ================= */
 const LS="bastion-v1";
 let S, dbRef=null, syncOn=false, writeTimer=null, userAct=false;
-try{const raw=localStorage.getItem(LS);S=normalize(raw?JSON.parse(raw):exampleState())}catch(e){S=normalize(exampleState())}
+try{const raw=localStorage.getItem(LS);S=raw?normalize(JSON.parse(raw)):Object.assign(blankState(),{example:true,updatedAt:0})}catch(e){S=Object.assign(blankState(),{example:true,updatedAt:0})}
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
 function commit(msg){S.updatedAt=Date.now();saveLocal();scheduleRemote();userAct=true;render();userAct=false;if(msg)toast(msg)}
 function scheduleRemote(){if(!dbRef)return;clearTimeout(writeTimer);writeTimer=setTimeout(pushNow,700)}
@@ -791,7 +791,7 @@ function render(){
   }
   prev={lvl:C.lvl,tier:C.tier};
 }
-function banner(){return `<div class="banner"><p><b>Bienvenue dans Penny Paws !</b> Ce sont des chiffres d'exemple. Importe ta sauvegarde pour retrouver tes vrais chiffres.</p><div class="acts"><button class="btn warm press" data-act="import">Importer ma sauvegarde</button><button class="btn ghost press" data-act="reset">Partir de zéro</button></div></div>`}
+function banner(){return `<div class="banner"><p><b>Bienvenue dans Penny Paws !</b> Importe ta sauvegarde pour retrouver tes chiffres, ou pars de zéro.</p><div class="acts"><button class="btn warm press" data-act="import">Importer ma sauvegarde</button><button class="btn ghost press" data-act="reset">Partir de zéro</button></div></div>`}
 function renderHero(){
   const p=(C.xp-C.lo)/(C.hi-C.lo);
   $("#lvl").textContent=C.lvl;$("#lvlTag").textContent="niveau · "+Math.round(p*100)+" %";
