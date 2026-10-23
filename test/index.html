@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test installation</title>
+<meta name="theme-color" content="#8E6BFF">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+body{margin:0;font-family:system-ui,sans-serif;background:#0C0A24;color:#F3EEFF;padding:20px;line-height:1.5}
+h1{font-size:22px;margin:0 0 6px}
+p{margin:6px 0 14px;color:#C9C0F5}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:#1B1546;margin:8px 0;font-size:15px}
+.row b{font-weight:700}
+.ok{color:#4FF0B0}.ko{color:#FF6F95}.wait{color:#FFC15A}
+button{width:100%;padding:16px;border:0;border-radius:14px;background:#8E6BFF;color:#fff;font-size:17px;font-weight:700;margin:12px 0}
+button[disabled]{opacity:.45}
+pre{white-space:pre-wrap;word-break:break-word;background:#140F38;border-radius:12px;padding:12px;font-size:13px;color:#C9C0F5}
+</style>
+</head>
+<body>
+<h1>🐾 Test d'installation</h1>
+<p>Cette mini-page n'a rien à voir avec ton budget. Elle sert juste à voir si ton téléphone sait installer une app depuis Chrome.</p>
+<div class="row"><span>Mode actuel</span><b id="mode" class="wait">…</b></div>
+<div class="row"><span>Service worker</span><b id="sw" class="wait">…</b></div>
+<div class="row"><span>Chrome propose l'installation</span><b id="bip" class="wait">en attente…</b></div>
+<div class="row"><span>Résultat du choix</span><b id="choice" class="wait">—</b></div>
+<div class="row"><span>Installée par Android</span><b id="inst" class="wait">—</b></div>
+<button id="go" disabled>Installer ce test</button>
+<p>Copie-colle ou capture ce bloc si tu me l'envoies :</p>
+<pre id="log"></pre>
+<script>
+const $=id=>document.getElementById(id);
+const log=[];function L(s){log.push(s);$("log").textContent=log.join("\n")}
+function set(id,txt,cls){const e=$(id);e.textContent=txt;e.className=cls}
+L("Navigateur : "+navigator.userAgent);
+L("Chrome (UA data) : "+((navigator.userAgentData&&navigator.userAgentData.brands||[]).map(b=>b.brand+" "+b.version).join(", ")||"n/a"));
+L("Adresse : "+location.href);
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+set("mode",standalone?"app installée":"onglet de navigateur",standalone?"ok":"wait");
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").then(r=>{set("sw","actif","ok");L("SW enregistré, portée : "+r.scope)}).catch(e=>{set("sw","erreur","ko");L("SW erreur : "+e)});
+}else{set("sw","non supporté","ko")}
+let dp=null;
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();dp=e;set("bip","oui","ok");$("go").disabled=false;L("beforeinstallprompt reçu à "+new Date().toLocaleTimeString())});
+setTimeout(()=>{if(!dp){set("bip","pas reçu","ko");L("Chrome n'a pas proposé l'installation après 6 s")}},6000);
+$("go").onclick=async()=>{
+  if(!dp)return;
+  try{
+    dp.prompt();
+    const c=await dp.userChoice;
+    set("choice",c.outcome==="accepted"?"accepté":"refusé",c.outcome==="accepted"?"ok":"ko");
+    L("userChoice : "+c.outcome);
+    if(c.outcome==="accepted"){setTimeout(()=>{if($("inst").className==="wait"){set("inst","pas de confirmation","ko");L("Pas d'évènement appinstalled 15 s après l'acceptation")}},15000)}
+  }catch(e){set("choice","erreur","ko");L("prompt erreur : "+e)}
+};
+addEventListener("appinstalled",()=>{set("inst","oui","ok");L("appinstalled reçu à "+new Date().toLocaleTimeString())});
+</script>
+</body>
+</html>
