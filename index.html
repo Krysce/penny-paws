@@ -521,9 +521,9 @@ function calc(){
   mExp.forEach(e=>{const d=cy.idxOfDate(e.date);if(d>=1&&d<=D)perDay[d]+=+e.amount||0});
   const spentMonth=mExp.reduce((a,e)=>a+(+e.amount||0),0);
   const status=Array(D+1).fill(null); let before=0; const energyOf=Array(D+1).fill(0);
-  for(let d=1;d<=D;d++){const en=Math.max(0,envTotal-before)/(D-d+1);energyOf[d]=en;if(d<today&&(!S.startDate||ymd(cy.dateAt(d))>=S.startDate))status[d]=perDay[d]<=en+0.005?"win":"lose";before+=perDay[d]}
+  for(let d=1;d<=D;d++){const en=Math.max(0,envTotal-before)/(D-d+1);energyOf[d]=en;if(d<today&&envTotal>0&&(!S.startDate||ymd(cy.dateAt(d))>=S.startDate))status[d]=perDay[d]<=en+0.005?"win":"lose";before+=perDay[d]}
   const energy=energyOf[today], spentToday=perDay[today], left=energy-spentToday;
-  let streak=left>=0?1:0; if(left>=0)for(let d=today-1;d>=1;d--){if(status[d]==="win")streak++;else break}
+  let streak=envTotal>0&&left>=0?1:0; if(left>=0)for(let d=today-1;d>=1;d--){if(status[d]==="win")streak++;else break}
   const P=S.paid[mk]||{};
   const fixedTotal=S.fixed.reduce((a,f)=>a+(+f.amount||0),0);
   const creditTotal=S.credits.filter(c=>c.remaining>0||P[c.id]).reduce((a,c)=>a+(+c.monthly||0),0);
@@ -843,7 +843,7 @@ function vToday(){
   `<section class="card"><div class="energy">${potionSVG(over?1:pct,over)}<div style="min-width:0">
     <span class="eyebrow">Énergie du jour · ${esc(dName)}</span>
     <div class="big ${over?"over":""} num" id="bigLeft">${over?"−":""}${eur(Math.abs(C.left))}</div>
-    <div class="e-sub">${over?`Dépassé de ${eur(-C.left)}. Pas grave, demain on recalcule.`:C.envLeft<=0&&C.energy<=0?`Tes sacoches sont vides jusqu'à ta paie du ${C.dateAt(C.D).getDate()+1>dim(C.dateAt(C.D))?1:C.dateAt(C.D).getDate()+1}. Chaque dépense d'ici là creuse le découvert.`:C.spentToday>0?`Il te reste ça sur ${eur(C.energy)} pour aujourd'hui.`:`À dépenser aujourd'hui sans mettre le mois en danger.`}</div></div>
+    <div class="e-sub">${C.envTotal<=0?`Ajoute le budget de tes sacoches pour que je calcule ton énergie du jour.`:over?`Dépassé de ${eur(-C.left)}. Pas grave, demain on recalcule.`:C.envLeft<=0&&C.energy<=0?`Tes sacoches sont vides jusqu'à ta paie du ${C.dateAt(C.D).getDate()+1>dim(C.dateAt(C.D))?1:C.dateAt(C.D).getDate()+1}. Chaque dépense d'ici là creuse le découvert.`:C.spentToday>0?`Il te reste ça sur ${eur(C.energy)} pour aujourd'hui.`:`À dépenser aujourd'hui sans mettre le mois en danger.`}</div></div>
     <div class="e-meta"><span>Sacoches <b class="num">${eur0(C.envLeft)}</b></span><span>Jours restants <b>${C.D-C.today+1}</b></span><span>Dépensé ce mois <b class="num">${eur0(C.spentMonth)}</b></span></div></div></section>`,
   `<section class="card"><div class="sec-head"><h2>Aujourd'hui</h2><button class="linkbtn press" data-act="add">+ Dépense</button></div>
     <div class="ledger">${todays.length?todays.slice().reverse().map(rowExp).join(""):`<p class="empty">Rien de noté aujourd'hui. Une journée sans dépense compte pour ton défi de la semaine.</p>`}</div></section>`,
