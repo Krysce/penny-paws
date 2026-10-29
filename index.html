@@ -144,6 +144,8 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 .big{font-family:var(--f-display);font-weight:800;font-size:clamp(44px,12vw,62px);line-height:.95;color:var(--cyan);text-shadow:0 0 24px rgba(79,240,216,.45)}
 .big.over{color:var(--bad);text-shadow:0 0 24px rgba(255,111,149,.45)}
 .e-sub{color:var(--muted);font-weight:700;font-size:14px;margin-top:4px}
+.toll.skip{opacity:.5}
+.toll.skip .n b{text-decoration:line-through}
 .e-acct{margin-top:9px;font-size:13.5px;line-height:1.45;font-weight:600;color:var(--muted)}
 .e-coffre{margin-top:9px;font-size:13.5px;line-height:1.45;font-weight:700;color:var(--yellow)}
 .e-coffre b{color:#fff;font-weight:800}
@@ -530,6 +532,7 @@ function cycleOf(t){
   const label=PD===1?"":`du ${start.getDate()} ${MOIS[start.getMonth()]} au ${end.getDate()} ${MOIS[end.getMonth()]}`;
   return {start,end,D,idx,dateAt,idxOfDate,idxOfDay,key:PD===1?monthKey(start):startS,cname,label,startS,endS};
 }
+const skipped=id=>!!(S.skip&&S.skip[C.mk+id]);
 function calc(){
   const t=NOW(), todayS=ymd(t), cy=cycleOf(t), mk=cy.key, D=cy.D, today=cy.idx;
   const envTotal=S.envelopes.reduce((a,e)=>a+(+e.budget||0),0);
@@ -545,7 +548,11 @@ function calc(){
   const energy=energyOf[today], spentToday=perDay[today], left=energy-spentToday;
   let streak=envTotal>0&&left>=0?1:0; if(left>=0)for(let d=today-1;d>=1;d--){if(status[d]==="win")streak++;else break}
   const P=S.paid[mk]||{};
-  const fixedTotal=S.fixed.reduce((a,f)=>a+(+f.amount||0),0);
+  /* Un peage mis en pause pour ce cycle ne compte nulle part : ni dans le
+     prevu, ni dans le reste a payer, ni sur le sentier. Il revient seul au
+     cycle suivant, la pause etant rangee par cycle dans S.skip. */
+  const SK=S.skip||{};
+  const fixedTotal=S.fixed.reduce((a,f)=>a+(SK[mk+f.id]?0:(+f.amount||0)),0);
   const creditTotal=S.credits.filter(c=>c.remaining>0||P[c.id]).reduce((a,c)=>a+(+c.monthly||0),0);
   const questNeeds=S.quests.map(q=>{const qdt=parseD(q.date);let months=(qdt.getFullYear()-t.getFullYear())*12+(qdt.getMonth()-t.getMonth());months=Math.max(1,months);const restant=Math.max(0,q.target-q.saved);const days=Math.round((qdt-new Date(t.getFullYear(),t.getMonth(),t.getDate()))/864e5);return {q,need:days<0?0:restant/months,days,restant}});
   const questTotal=questNeeds.reduce((a,x)=>a+x.need,0);
@@ -885,7 +892,7 @@ function rowExp(e){
 }
 function routeHTML(){
   const P=C.P, ev=Array.from({length:C.D+1},()=>[]), mob=innerWidth<640;
-  S.fixed.forEach(f=>{const d=C.idxOfDay(+f.day||1);ev[d].push({k:"toll",paid:!!P[f.id],a:+f.amount||0,h:`<span class="bub2 ${P[f.id]?"paid":""}">${esc(f.name)} · ${eur0(f.amount)}</span>`})});
+  S.fixed.forEach(f=>{if(skipped(f.id))return;const d=C.idxOfDay(+f.day||1);ev[d].push({k:"toll",paid:!!P[f.id],a:+f.amount||0,h:`<span class="bub2 ${P[f.id]?"paid":""}">${esc(f.name)} · ${eur0(f.amount)}</span>`})});
   S.credits.forEach(c=>{if(c.remaining<=0&&!P[c.id])return;const d=C.idxOfDay(+c.day||1);ev[d].push({k:"boss",paid:!!P[c.id],a:+c.monthly||0,h:`<span class="bub2 boss ${P[c.id]?"paid":""}">Boss ${esc(c.name)} · ${eur0(c.monthly)}</span>`})});
   S.quests.forEach(q=>{const qi=C.idxOfDate(q.date);if(qi)ev[qi].push({k:"quest",h:`<span class="bub2 quest">${esc(q.name)}</span>`})});
   S.dreams.forEach((dr,i)=>{if(!(dr.monthly>0)||dr.saved>=dr.target)return;const d=C.idxOfDay(+dr.day||1);ev[d].push({k:"dream",h:`<span class="bub2 dream ${P[dr.id]?"paid":""}" style="--c:${dColor(dr,i)}">${esc(dr.name)} · ${eur0(dr.monthly)}</span>`})});
@@ -980,7 +987,8 @@ function vBoss(){
       <div class="meta">${months?`Vaincu en <b>${MOIS[end.getMonth()]} ${end.getFullYear()}</b> · encore ${months} coups`:"Dernier coup porté !"}</div>
       <div class="acts">${P[c.id]?`<span class="pill good">Touché ce mois −${eur0(c.monthly)}</span><button class="linkbtn" data-unhit="${c.id}">Annuler</button>`:`<button class="btn warm press" data-hit="${c.id}">${c.overdraft?"Frapper · mois tenu":"Frapper · mensualité payée"}</button>`}<button class="linkbtn" data-edit="credit:${c.id}">Modifier</button></div>
     </div></div>`}).join("");
-  const tolls=S.fixed.slice().sort((a,b)=>a.day-b.day).map(f=>`<div class="toll"><button class="check ${P[f.id]?"on":""}" data-toll="${f.id}" aria-label="${P[f.id]?"Marquer non payé":"Marquer payé"}">${P[f.id]?IC.check:""}</button><span class="n"><b>${esc(f.name)}</b><small>le ${f.day} du mois</small></span><span class="num" style="font-weight:900">${eur(f.amount)}</span><button class="edit" data-edit="fixed:${f.id}" aria-label="Modifier">${IC.pen}</button></div>`).join("");
+  const tolls=S.fixed.slice().sort((a,b)=>a.day-b.day).map(f=>{const sk=skipped(f.id);
+    return `<div class="toll ${sk?"skip":""}"><button class="check ${P[f.id]&&!sk?"on":""}" data-toll="${f.id}" ${sk?"disabled":""} aria-label="${P[f.id]?"Marquer non payé":"Marquer payé"}">${P[f.id]&&!sk?IC.check:""}</button><span class="n"><b>${esc(f.name)}</b><small>${sk?"en pause ce mois-ci":"le "+f.day+" du mois"}</small></span><span class="num" style="font-weight:900">${eur(f.amount)}</span><button class="edit" data-skip="${f.id}" aria-label="${sk?"Remettre ce mois-ci":"Ne pas payer ce mois-ci"}" title="${sk?"Remettre ce mois-ci":"Ne pas payer ce mois-ci"}">${sk?IC.undo||"↺":"⏸"}</button><button class="edit" data-edit="fixed:${f.id}" aria-label="Modifier">${IC.pen}</button></div>`}).join("");
   const paidT=S.fixed.filter(f=>P[f.id]).reduce((a,f)=>a+f.amount,0);
   return [`<section class="card"><div class="sec-head"><h2>Les boss</h2><button class="linkbtn press" data-new="credit">+ Boss</button></div>
   <p class="lede">Chaque crédit est un monstre de la forêt. Chaque mensualité payée lui retire des points de vie. Rembourser un peu plus tôt, c'est un coup critique.</p>
@@ -1054,7 +1062,7 @@ function acctCalc(){
   const spentSince=S.expenses.filter(e=>(e.at||0)>since).reduce((a,e)=>a+(+e.amount||0),0);
   const ticked=[...S.fixed,...S.credits.filter(c=>!c.overdraft)].filter(x=>P[x.id]&&(S.paidAt[C.mk+x.id]||0)>since).reduce((a,x)=>a+(+(x.amount??x.monthly)||0),0);
   const est=A.checking-spentSince-ticked;
-  const upcoming=S.fixed.filter(f=>!P[f.id]).reduce((a,f)=>a+(+f.amount||0),0)+S.credits.filter(c=>!P[c.id]&&c.remaining>0&&!c.overdraft).reduce((a,c)=>a+(+c.monthly||0),0)+S.dreams.filter(d=>P[d.id]==null&&d.monthly>0&&d.saved<d.target).reduce((a,d)=>a+(+d.monthly||0),0);
+  const upcoming=S.fixed.filter(f=>!P[f.id]&&!skipped(f.id)).reduce((a,f)=>a+(+f.amount||0),0)+S.credits.filter(c=>!P[c.id]&&c.remaining>0&&!c.overdraft).reduce((a,c)=>a+(+c.monthly||0),0)+S.dreams.filter(d=>P[d.id]==null&&d.monthly>0&&d.saved<d.target).reduce((a,d)=>a+(+d.monthly||0),0);
   const after=est-upcoming, margin=after-C.envLeft;
   const drawers=[{name:"Coffre de sécurité",v:+S.vault||0,c:"#FFD86B"},...S.dreams.map((d,i)=>({name:d.name,v:+d.saved||0,c:dColor(d,i)}))];
   const drawn=drawers.reduce((a,x)=>a+x.v,0), diff=(A.livret||0)-drawn;
@@ -1218,7 +1226,7 @@ function celebrate(title,sub){
 
 /* ================= Actions ================= */
 document.addEventListener("click",e=>{
-  const a=e.target.closest("[data-act],[data-edit],[data-new],[data-edit-exp],[data-hit],[data-unhit],[data-toll],[data-qadd],[data-qdone],[data-dpay],[data-dadd],[data-dundo],[data-bonus]");if(!a||a.closest("dialog"))return;
+  const a=e.target.closest("[data-act],[data-edit],[data-new],[data-edit-exp],[data-hit],[data-unhit],[data-toll],[data-skip],[data-qadd],[data-qdone],[data-dpay],[data-dadd],[data-dundo],[data-bonus]");if(!a||a.closest("dialog"))return;
   const d=a.dataset;
   if(d.act)return act(d.act,a);
   if(d.editExp)return openExpense(S.expenses.find(x=>x.id===d.editExp));
@@ -1235,6 +1243,10 @@ document.addEventListener("click",e=>{
       if(k==="vault"){S.vault=Math.round((S.vault+v)*100)/100;S.vaultLog.push({id:uidg(),date:ymd(NOW()),amount:v,note:"Bonus de paie"});toLivret(v);sfx.coin();react("proud",2600,"Le bonus est à l'abri !");return commit(`Coffre <b>+${eur(v)}</b>`+livretNote())}
       const dr=S.dreams.find(x=>x.id===k);if(dr)dreamGain(dr,v,from,"Bonus versé")},pay.left)}
   if(d.hit)return hit(d.hit,a);
+  if(d.skip){const k=C.mk+d.skip;S.skip=S.skip||{};
+    if(S.skip[k]){delete S.skip[k];return commit("Remis ce mois-ci")}
+    S.skip[k]=true;delete (S.paid[C.mk]||{})[d.skip];delete S.paidAt[k];
+    return commit("En pause ce mois-ci")}
   if(d.unhit)return unhit(d.unhit);
   if(d.toll){const P=S.paid[C.mk]=S.paid[C.mk]||{};const on=!P[d.toll];S.noauto=S.noauto||{};if(on){P[d.toll]=true;S.paidAt[C.mk+d.toll]=Date.now();delete S.noauto[C.mk+d.toll]}else{delete P[d.toll];delete S.paidAt[C.mk+d.toll];S.noauto[C.mk+d.toll]=true}if(on){sfx.pop();const c=center(a);sparkles(c.x,c.y,10,"#4FF0B0")}return commit(on?"Péage payé":"")}
   if(d.qadd)return openAmount("Mettre de côté pour la quête","Montant",v=>{const q=S.quests.find(x=>x.id===d.qadd);q.saved=Math.round((q.saved+v)*100)/100;sfx.coin();react("happy",2500,"Une quête mieux préparée, c'est moins de stress !");commit(`<b>+${eur0(v)}</b> pour ${esc(q.name)}`)});
@@ -1260,7 +1272,7 @@ function autoTick(){
   S.noauto=S.noauto||{};
   let n=0;
   S.fixed.forEach(f=>{
-    if(P[f.id]||S.noauto[mk+f.id])return;
+    if(P[f.id]||S.noauto[mk+f.id]||(S.skip||{})[mk+f.id])return;
     if(cy.idxOfDay(+f.day||1)>today)return;
     P[f.id]=true;S.paidAt[mk+f.id]=Date.now();n++;
   });
