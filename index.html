@@ -197,7 +197,8 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 .track.horiz::-webkit-scrollbar-thumb{background:rgba(185,162,255,.32);border-radius:4px}
 .track.horiz::-webkit-scrollbar-track{background:transparent}
 .hbub{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;width:118px}
-.hbub .bub2{max-width:100%;text-align:center}
+.hbub .bub2{max-width:100%;text-align:center;overflow-wrap:anywhere}
+.hbub .bub2.group{font-size:10.8px;letter-spacing:-.1px}
 .hbub .bub2.group{white-space:normal}
 @media (max-width:639px){.hbub{width:94px}}
 .hbub .bub2{font-size:11.5px;padding:4px 8px}
@@ -431,7 +432,7 @@ textarea.export{width:100%;min-height:160px;font-family:ui-monospace,Menlo,monos
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur=n=>(Math.round((+n||0)*100)/100).toLocaleString("fr-FR",{style:"currency",currency:"EUR"});
-const eur0=n=>Math.round(+n||0).toLocaleString("fr-FR")+" €";
+const eur0=n=>Math.round(+n||0).toLocaleString("fr-FR")+"\u00A0€";  /* espace insecable : le symbole ne tombe jamais seul a la ligne */
 const pnum=v=>{const n=parseFloat(String(v).replace(/\s/g,"").replace(",","."));return isFinite(n)?n:NaN};
 const uidg=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,"0");
@@ -892,7 +893,7 @@ function routeHTML(){
   const chips=ev.map(list=>{const bills=list.filter(e=>e.k==="toll"||e.k==="boss"),other=list.filter(e=>e.k!=="toll"&&e.k!=="boss");
     if(bills.length<=1)return list.map(e=>e.h);
     const tot=bills.reduce((x,e)=>x+e.a,0),allPaid=bills.every(e=>e.paid),hasBoss=bills.some(e=>e.k==="boss");
-    return [`<button type="button" class="bub2 group ${hasBoss?"boss":""} ${allPaid?"paid":""}" data-tab="boss">${bills.length} prélèvements · ${eur0(tot)}</button>`,...other.map(e=>e.h)]});
+    return [`<button type="button" class="bub2 group ${hasBoss?"boss":""} ${allPaid?"paid":""}" data-tab="boss">${bills.length} prélèvements<br>${eur0(tot)}</button>`,...other.map(e=>e.h)]});
   /* Le sentier file a l'horizontale : tous les jours du cycle sont la,
      aujourd'hui au centre, le passe a gauche, et on fait glisser pour avancer. */
   const days=[];
@@ -1235,7 +1236,7 @@ document.addEventListener("click",e=>{
       const dr=S.dreams.find(x=>x.id===k);if(dr)dreamGain(dr,v,from,"Bonus versé")},pay.left)}
   if(d.hit)return hit(d.hit,a);
   if(d.unhit)return unhit(d.unhit);
-  if(d.toll){const P=S.paid[C.mk]=S.paid[C.mk]||{};const on=!P[d.toll];if(on){P[d.toll]=true;S.paidAt[C.mk+d.toll]=Date.now()}else{delete P[d.toll];delete S.paidAt[C.mk+d.toll]}if(on){sfx.pop();const c=center(a);sparkles(c.x,c.y,10,"#4FF0B0")}return commit(on?"Péage payé":"")}
+  if(d.toll){const P=S.paid[C.mk]=S.paid[C.mk]||{};const on=!P[d.toll];S.noauto=S.noauto||{};if(on){P[d.toll]=true;S.paidAt[C.mk+d.toll]=Date.now();delete S.noauto[C.mk+d.toll]}else{delete P[d.toll];delete S.paidAt[C.mk+d.toll];S.noauto[C.mk+d.toll]=true}if(on){sfx.pop();const c=center(a);sparkles(c.x,c.y,10,"#4FF0B0")}return commit(on?"Péage payé":"")}
   if(d.qadd)return openAmount("Mettre de côté pour la quête","Montant",v=>{const q=S.quests.find(x=>x.id===d.qadd);q.saved=Math.round((q.saved+v)*100)/100;sfx.coin();react("happy",2500,"Une quête mieux préparée, c'est moins de stress !");commit(`<b>+${eur0(v)}</b> pour ${esc(q.name)}`)});
   if(d.qdone){const q=S.quests.find(x=>x.id===d.qdone);S.questsDone++;if(q.yearly){const dt=parseD(q.date);dt.setFullYear(dt.getFullYear()+1);q.date=ymd(dt);q.saved=0}else S.quests=S.quests.filter(x=>x!==q);const c=center(a);confetti(c.x,c.y,90);sfx.win();react("proud",3500,"Quête accomplie, sans stress ni découvert !");return commit("Quête accomplie <b>+40 XP</b>")}
 });
@@ -1250,10 +1251,36 @@ function hit(id,btn){
   else react("happy",2500,"Bam ! Encore "+Math.ceil(c.remaining/c.monthly)+" coups et on l'a.");
   commit(dead?"":`Coup porté <b>−${eur0(dmg)}</b> · +25 XP`);
 }
+function autoTick(){
+  /* Les prelevements se cochent seuls le jour venu : plus besoin de pointer a
+     la main ce que la banque a deja fait. Ce qu'elle decoche reste decoche :
+     on le note dans S.noauto pour ne pas le re-cocher au chargement suivant. */
+  const t=NOW(), cy=cycleOf(t), mk=cy.key, today=cy.idx;
+  const P=S.paid[mk]=S.paid[mk]||{};
+  S.noauto=S.noauto||{};
+  let n=0;
+  S.fixed.forEach(f=>{
+    if(P[f.id]||S.noauto[mk+f.id])return;
+    if(cy.idxOfDay(+f.day||1)>today)return;
+    P[f.id]=true;S.paidAt[mk+f.id]=Date.now();n++;
+  });
+  S.credits.forEach(c=>{
+    if(P[c.id]||S.noauto[mk+c.id]||!(c.remaining>0))return;
+    if(cy.idxOfDay(+c.day||1)>today)return;
+    const dmg=Math.min(+c.monthly||0,c.remaining);
+    c.remaining=Math.round((c.remaining-dmg)*100)/100;
+    P[c.id]=true;S.paidAt[mk+c.id]=Date.now();
+    S.hits.push({id:c.id,mk,amount:dmg});n++;
+  });
+  if(n){S.updatedAt=Date.now();saveLocal()}
+  return n;
+}
 function unhit(id){
   const c=S.credits.find(x=>x.id===id);const i=S.hits.map(h=>h.id+h.mk).lastIndexOf(id+C.mk);
   if(i>=0){c.remaining=Math.round((c.remaining+S.hits[i].amount)*100)/100;S.hits.splice(i,1)}
-  delete (S.paid[C.mk]||{})[id];delete S.paidAt[C.mk+id];commit("Coup annulé");
+  delete (S.paid[C.mk]||{})[id];delete S.paidAt[C.mk+id];
+  S.noauto=S.noauto||{};S.noauto[C.mk+id]=true;
+  commit("Coup annulé");
 }
 function act(k,btn){
   if(k==="add"){sfx.pop();return openExpense()}
@@ -1393,6 +1420,7 @@ renderMute();
 document.getElementById("impg").onchange=importFile;
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+autoTick();
 render();
 setTimeout(()=>say(greet(),5200),700);
 if(REDUCE){drawAll(0);ambient(0)}
