@@ -144,6 +144,9 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 .big{font-family:var(--f-display);font-weight:800;font-size:clamp(44px,12vw,62px);line-height:.95;color:var(--cyan);text-shadow:0 0 24px rgba(79,240,216,.45)}
 .big.over{color:var(--bad);text-shadow:0 0 24px rgba(255,111,149,.45)}
 .e-sub{color:var(--muted);font-weight:700;font-size:14px;margin-top:4px}
+.e-acct{margin-top:9px;font-size:13.5px;line-height:1.45;font-weight:600;color:var(--muted)}
+.e-acct b{color:var(--ink);font-weight:800}
+.e-acct.alert{color:var(--warn)}.e-acct.alert b{color:var(--warn)}
 .e-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;grid-column:1/-1}
 .e-meta span{background:var(--wash);border-radius:12px;padding:6px 11px;font-size:13px;color:var(--muted);font-weight:700}
 .e-meta b{color:var(--ink)}
@@ -521,7 +524,10 @@ function calc(){
   mExp.forEach(e=>{const d=cy.idxOfDate(e.date);if(d>=1&&d<=D)perDay[d]+=+e.amount||0});
   const spentMonth=mExp.reduce((a,e)=>a+(+e.amount||0),0);
   const status=Array(D+1).fill(null); let before=0; const energyOf=Array(D+1).fill(0);
-  for(let d=1;d<=D;d++){const en=Math.max(0,envTotal-before)/(D-d+1);energyOf[d]=en;if(d<today&&envTotal>0&&(!S.startDate||ymd(cy.dateAt(d))>=S.startDate))status[d]=perDay[d]<=en+0.005?"win":"lose";before+=perDay[d]}
+  /* Une depense deja engagee plus loin dans le cycle doit peser sur l'energie
+     d'aujourd'hui, sinon la carte promet plus qu'il ne reste vraiment.
+     Les jours passes gardent le plafond qu'ils affichaient sur le moment. */
+  for(let d=1;d<=D;d++){const avail=d<today?envTotal-before:envTotal-spentMonth+perDay[d];const en=Math.max(0,avail)/(D-d+1);energyOf[d]=en;if(d<today&&envTotal>0&&(!S.startDate||ymd(cy.dateAt(d))>=S.startDate))status[d]=perDay[d]<=en+0.005?"win":"lose";before+=perDay[d]}
   const energy=energyOf[today], spentToday=perDay[today], left=energy-spentToday;
   let streak=envTotal>0&&left>=0?1:0; if(left>=0)for(let d=today-1;d>=1;d--){if(status[d]==="win")streak++;else break}
   const P=S.paid[mk]||{};
@@ -843,7 +849,7 @@ function vToday(){
   `<section class="card"><div class="energy">${potionSVG(over?1:pct,over)}<div style="min-width:0">
     <span class="eyebrow">Énergie du jour · ${esc(dName)}</span>
     <div class="big ${over?"over":""} num" id="bigLeft">${over?"−":""}${eur(Math.abs(C.left))}</div>
-    <div class="e-sub">${C.envTotal<=0?`Ajoute le budget de tes sacoches pour que je calcule ton énergie du jour.`:over?`Dépassé de ${eur(-C.left)}. Pas grave, demain on recalcule.`:C.envLeft<=0&&C.energy<=0?`Tes sacoches sont vides jusqu'à ta paie du ${C.dateAt(C.D).getDate()+1>dim(C.dateAt(C.D))?1:C.dateAt(C.D).getDate()+1}. Chaque dépense d'ici là creuse le découvert.`:C.spentToday>0?`Il te reste ça sur ${eur(C.energy)} pour aujourd'hui.`:`À dépenser aujourd'hui sans mettre le mois en danger.`}</div></div>
+    <div class="e-sub">${C.envTotal<=0?`Ajoute le budget de tes sacoches pour que je calcule ton énergie du jour.`:over?`Dépassé de ${eur(-C.left)}. Pas grave, demain on recalcule.`:C.envLeft<=0&&C.energy<=0?`Tes sacoches sont vides jusqu'à ta paie du ${C.dateAt(C.D).getDate()+1>dim(C.dateAt(C.D))?1:C.dateAt(C.D).getDate()+1}. Chaque dépense d'ici là creuse le découvert.`:C.spentToday>0?`Il te reste ça sur ${eur(C.energy)} pour aujourd'hui.`:`Plafond du jour, recalculé chaque matin. Ce que tu gardes en dessous relève les jours suivants.`}</div>${acctLine()}</div>
     <div class="e-meta"><span>Sacoches <b class="num">${eur0(C.envLeft)}</b></span><span>Jours restants <b>${C.D-C.today+1}</b></span><span>Dépensé ce mois <b class="num">${eur0(C.spentMonth)}</b></span></div></div></section>`,
   `<section class="card"><div class="sec-head"><h2>Aujourd'hui</h2><button class="linkbtn press" data-act="add">+ Dépense</button></div>
     <div class="ledger">${todays.length?todays.slice().reverse().map(rowExp).join(""):`<p class="empty">Rien de noté aujourd'hui. Une journée sans dépense compte pour ton défi de la semaine.</p>`}</div></section>`,
@@ -1036,6 +1042,14 @@ function acctCalc(){
   return {est,upcoming,after,margin,drawers,drawn,diff,spentSince,ticked};
 }
 function since(ts){if(!ts)return "pas encore saisi";const d=Math.floor((Date.now()-ts)/864e5);if(d>=7)return `<span class="pill warn">mis à jour il y a ${d} jours</span>`;const dt=new Date(ts);return "mis à jour le "+dt.getDate()+" "+MOIS[dt.getMonth()]}
+function acctLine(){
+  /* Les sacoches disent ce que le budget permet ; le compte dit ce que la
+     banque permet avant le rouge. La vraie limite est la plus basse des deux. */
+  if(!S.accounts.checkingAt||C.envTotal<=0)return "";
+  const a=acctCalc(), days=Math.max(1,C.D-C.today+1), perDay=a.after/days;
+  if(perDay<C.energy-0.005)return `<div class="e-acct alert">Mais ton compte ne suivra pas : une fois les charges passées, il ne laisse que <b>${eur(Math.max(0,perDay))}</b> par jour jusqu'à ta paie. C'est lui, ta vraie limite.</div>`;
+  return `<div class="e-acct">Ton compte tiendrait jusqu'à <b>${eur(perDay)}</b> par jour. Tes sacoches restent la limite, avec <b>${eur0(a.margin)}</b> de marge.</div>`;
+}
 function accountsHTML(){
   const A=S.accounts;
   if(!A.checkingAt&&!A.livretAt)return `<section class="card"><div class="sec-head"><h2>Mes comptes</h2></div><p class="lede">Pour que l'app colle à la réalité, saisis les soldes de ton compte courant et de ton Livret A, lus sur ton appli bancaire. Ton coffre et tes expéditions deviennent des tiroirs de ton Livret A, et l'app vérifie que tout correspond.</p><button class="btn warm press" data-act="accounts">Saisir mes soldes</button></section>`;
