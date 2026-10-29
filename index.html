@@ -194,7 +194,10 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 @keyframes pulse{50%{box-shadow:0 0 0 12px rgba(255,170,77,.18),0 0 0 26px rgba(255,170,77,.06),0 0 56px rgba(255,170,77,1)}}
 .node .lbl{position:absolute;top:100%;margin-top:2px;font-size:10.5px;font-weight:800;color:#B7AEE6;white-space:nowrap}
 .bubbles{position:absolute;transform:translateY(-50%);display:flex;flex-direction:column;gap:4px;max-width:46%}
-.track.horiz{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;cursor:grab}
+.track.horiz{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;cursor:grab;
+  --fl:0px;--fr:0px;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 var(--fl),#000 calc(100% - var(--fr)),transparent 100%)}
 .track.horiz.drag{cursor:grabbing}
 .track.horiz .strip{position:relative}
 .track.horiz::-webkit-scrollbar{height:7px}
@@ -1177,6 +1180,16 @@ function centerToday(){
   if(!tr)return;
   const n=tr.querySelector(".node.today");
   if(n)tr.scrollLeft=Math.max(0,n.offsetLeft-tr.clientWidth/2);
+  /* Un fondu sur le bord dit qu'il reste du chemin de ce cote, et s'efface
+     des qu'on touche le bout. */
+  const fade=()=>{
+    const max=tr.scrollWidth-tr.clientWidth;
+    tr.style.setProperty("--fl",tr.scrollLeft>6?"38px":"0px");
+    tr.style.setProperty("--fr",tr.scrollLeft<max-6?"38px":"0px");
+  };
+  tr.addEventListener("scroll",fade,{passive:true});
+  addEventListener("resize",fade);
+  fade();
   tr.addEventListener("wheel",e=>{
     if(Math.abs(e.deltaY)<=Math.abs(e.deltaX))return;
     const max=tr.scrollWidth-tr.clientWidth;
