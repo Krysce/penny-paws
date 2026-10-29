@@ -167,6 +167,8 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 .row .t small{color:var(--muted);font-weight:600}
 .row .a{font-weight:900;font-variant-numeric:tabular-nums}
 .empty{color:var(--muted);padding:6px 4px;margin:0;font-weight:600}
+.card.slim{padding:12px 16px}
+.card.slim .empty{padding:0;font-size:14px}
 
 /* Défis */
 .challenges{display:flex;flex-direction:column;gap:10px}
@@ -924,8 +926,13 @@ function vToday(){
     <span class="eyebrow">Énergie du jour · ${esc(dName)}</span>
     <div class="big ${over?"over":""} num" id="bigLeft">${over?"−":""}${eur(Math.abs(C.left))}</div>
     <div class="e-sub">${C.envTotal<=0?`Ajoute le budget de tes sacoches pour que je calcule ton énergie du jour.`:over?`Dépassé de ${eur(-C.left)}. Pas grave, demain on recalcule.`:C.envLeft<=0&&C.energy<=0?`Tes sacoches sont vides jusqu'à ta paie du ${C.dateAt(C.D).getDate()+1>dim(C.dateAt(C.D))?1:C.dateAt(C.D).getDate()+1}. Chaque dépense d'ici là creuse le découvert.`:C.spentToday>0?`Ce qu'il te reste sur ${eur(C.energy)} pour aujourd'hui.`:`Ton maximum pour aujourd'hui.`}</div>${coffreLine()}${acctLine()}</div></div></section>`,
-  `<section class="card"><div class="sec-head"><h2>Aujourd'hui</h2><button class="linkbtn press" data-act="add">+ Dépense</button></div>
-    <div class="ledger">${todays.length?todays.slice().reverse().map(rowExp).join(""):`<p class="empty">Rien de noté aujourd'hui. Une journée sans dépense compte pour ton défi de la semaine.</p>`}</div></section>`,
+  /* Le gros + du dock ajoute deja une depense : un second bouton a vingt
+     centimetres n'offrait qu'une hesitation. Et tant que rien n'est note, la
+     carte se reduit a une ligne au lieu de repousser le sentier. */
+  todays.length
+   ? `<section class="card"><div class="sec-head"><h2>Aujourd'hui</h2><span class="eyebrow num">${eur(C.spentToday)} dépensés</span></div>
+    <div class="ledger">${todays.slice().reverse().map(rowExp).join("")}</div></section>`
+   : `<section class="card slim"><p class="empty">Rien de noté aujourd'hui. Une journée sans dépense compte pour ton défi de la semaine.</p></section>`,
   `<section class="route"><div class="sec-head"><h2>Le sentier de ${C.cname}</h2><span class="eyebrow">${C.cy.label||"passages obligés · boss · quêtes"}</span></div>${routeHTML()}</section>`,
   `<section class="card"><div class="sec-head"><h2>Défis</h2><span class="eyebrow">chacun rapporte de l'XP</span></div>
     <div class="challenges">${ch.map((c,i)=>{const got=(S.chDone||{})[c.key]!=null,done=got||c.g>=c.n,v=Math.min(c.g,c.n);
