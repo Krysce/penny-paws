@@ -213,6 +213,7 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 .bub2{border-radius:12px;padding:5px 10px;font-size:12px;font-weight:800;line-height:1.2;border:1.5px solid rgba(79,240,216,.35);background:rgba(20,61,78,.9);color:#CFFFF6;position:relative;box-shadow:0 0 14px rgba(79,240,216,.2)}
 .bub2.boss{background:rgba(61,29,82,.92);border-color:rgba(255,126,200,.45);color:#FFD6F0;box-shadow:0 0 14px rgba(255,126,200,.25)}
 .bub2.quest{background:var(--orange);color:#2A1504;border-color:#FFE6C7;box-shadow:0 0 16px rgba(255,170,77,.5)}
+.bub2.pay{background:rgba(58,44,12,.92);border-color:rgba(255,216,107,.55);color:#FFE9A8;box-shadow:0 0 16px rgba(255,216,107,.25)}
 .bub2.dream{background:var(--c,#FF7EC8);color:#1A0E2E;border-color:rgba(255,255,255,.7);box-shadow:0 0 16px var(--c,#FF7EC8)}
 .bub2.paid{opacity:.55}
 .bub2.paid::after{content:"";position:absolute;right:-7px;top:-7px;width:16px;height:16px;border-radius:50%;background:#B8FFE9 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B5E48' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/11px no-repeat}
@@ -948,6 +949,12 @@ function routeHTML(){
   S.credits.forEach(c=>{if(c.remaining<=0&&!P[c.id])return;const d=C.idxOfDay(+c.day||1);ev[d].push({k:"boss",paid:!!P[c.id],a:+c.monthly||0,h:`<span class="bub2 boss ${P[c.id]?"paid":""}">Boss ${esc(c.name)} · ${eur0(c.monthly)}</span>`})});
   S.quests.forEach(q=>{const qi=C.idxOfDate(q.date);if(qi)ev[qi].push({k:"quest",h:`<span class="bub2 quest">${esc(q.name)}</span>`})});
   S.dreams.forEach((dr,i)=>{if(!(dr.monthly>0)||dr.saved>=dr.target)return;const d=C.idxOfDay(+dr.day||1);ev[d].push({k:"dream",h:`<span class="bub2 dream ${P[dr.id]?"paid":""}" style="--c:${dColor(dr,i)}">${esc(dr.name)} · ${eur0(dr.monthly)}</span>`})});
+  /* On marque le depart et l'arrivee : sans ca, voir le 30 et le 31 octobre en
+     tete du "sentier de novembre" n'a aucun sens. Le sentier suit la paie, pas
+     le calendrier. */
+  const d1=C.dateAt(1), dN=C.dateAt(C.D);
+  ev[1].push({k:"pay",h:`<span class="bub2 pay">Ta paie du ${d1.getDate()} ${MOIS3[d1.getMonth()]}</span>`});
+  ev[C.D].push({k:"pay",h:`<span class="bub2 pay">Veille de ta paie</span>`});
   // regroupe les prélèvements d'un même jour quand il y en a plusieurs
   const chips=ev.map(list=>{const bills=list.filter(e=>e.k==="toll"||e.k==="boss"),other=list.filter(e=>e.k!=="toll"&&e.k!=="boss");
     if(bills.length<=1)return list.map(e=>e.h);
