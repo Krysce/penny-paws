@@ -175,6 +175,8 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 .ch.done .medal{background:radial-gradient(circle at 35% 30%,#FFF4C2,#FFD25A 55%,#E59A12);color:#7A4A00;box-shadow:0 0 18px rgba(255,210,90,.6);animation:stamp .6s cubic-bezier(.3,1.7,.5,1) both;animation-delay:calc(var(--i,0)*120ms + .25s)}
 @keyframes stamp{from{transform:scale(1.8) rotate(-20deg);opacity:0}}
 .ch b{display:block;font-size:14.5px;font-weight:800;line-height:1.25}
+.ch .chmeta{font-size:12px;color:var(--muted);font-weight:700;margin-top:3px}
+.ch .chmeta .xp{font-style:normal;color:var(--yellow);font-weight:800}
 .ch .mini{height:6px;background:var(--line);border-radius:99px;margin-top:6px;overflow:hidden}
 .ch .mini span{display:block;height:100%;background:var(--violet2);border-radius:99px}
 .ch.done .mini span{background:var(--good)}
@@ -559,7 +561,7 @@ function calc(){
   const dreamTotal=S.dreams.filter(d=>d.saved<d.target).reduce((a,d)=>a+(+d.monthly||0),0), dreamSaved=S.dreams.reduce((a,d)=>a+(+d.saved||0),0);
   const planned=(+S.income||0)-fixedTotal-creditTotal-questTotal-envTotal-dreamTotal;
   const envLeft=Math.max(0,envTotal-spentMonth);
-  const xp=Math.floor(S.expenses.length*3+S.hits.length*25+(+S.vault||0)+S.questsDone*40+Object.keys(S.closed).length*30+dreamSaved);
+  const xp=Math.floor(S.expenses.length*3+S.hits.length*25+(+S.vault||0)+S.questsDone*40+Object.keys(S.closed).length*30+dreamSaved+chXp());
   let lvl=1;while(xp>=50*lvl*(lvl+1))lvl++;
   const lo=50*(lvl-1)*lvl, hi=50*lvl*(lvl+1);
   const tier=TIERS.filter(x=>S.vault>=x[0]).length;
@@ -804,6 +806,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(
 let C, prev=null, shownLeft=null, freshId=null;
 function render(){
   C=calc();
+  if(awardChallenges())C=calc();
   mood.base=C.left<0?"sad":(C.energy>0&&C.left/C.energy<.2?"worried":(C.streak>=3?"happy":"idle"));
   renderHero();
   const v={today:vToday,pouch:vPouch,boss:vBoss,quest:vQuest,vault:vVault}[tab];
@@ -854,18 +857,40 @@ function potionSVG(pct,over){
   <rect x="34" y="8" width="28" height="14" rx="5" fill="#C99A6B" stroke="${OUTLINE}" stroke-width="3"/>
   ${eyes}${mouth}<ellipse cx="33" cy="82" rx="4" ry="2.5" fill="#FF8FB4" opacity=".75"/><ellipse cx="63" cy="82" rx="4" ry="2.5" fill="#FF8FB4" opacity=".75"/></svg>`;
 }
+const WKEY=d=>{const t=new Date(d);t.setDate(t.getDate()-((t.getDay()+6)%7));return ymd(t)};
+const chXp=()=>Object.values(S.chDone||{}).reduce((a,b)=>a+(+b||0),0);
+function challenges(){
+  /* Un defi dit une action, une periode et ce qu'il rapporte. Une fois gagne,
+     il est range dans S.chDone avec son XP : la recompense ne se reprend plus,
+     meme si la serie retombe ensuite. */
+  const wd=(C.t.getDay()+6)%7; let zero=0;
+  for(let d=C.today-wd;d<C.today;d++){if(d>=1&&C.status[d]&&C.perDay[d]===0)zero++}
+  const pace=C.today/C.D;
+  const onPace=S.envelopes.filter(e=>{const sp=C.mExp.filter(x=>x.envId===e.id).reduce((a,x)=>a+x.amount,0);return sp<=e.budget*Math.min(1,pace+.08)}).length;
+  const logged=new Set(C.mExp.map(e=>e.date)).size;
+  const pal=C.streak>=7?14:C.streak>=3?7:3, nEnv=S.envelopes.length||1;
+  return [
+    {key:"serie-"+pal,xp:pal*20,g:C.streak,n:pal,when:"une seule fois",
+     t:`Tiens ${pal} jours d'affilée sous ton énergie`},
+    {key:"sobre-"+WKEY(C.t),xp:40,g:zero,n:2,when:"cette semaine",
+     t:"Passe 2 journées sans rien dépenser"},
+    {key:"rythme-"+C.mk,xp:50,g:onPace,n:nEnv,when:"ce mois-ci",
+     t:`Garde tes ${nEnv} sacoches au bon rythme`},
+    {key:"carnet-"+C.mk,xp:30,g:logged,n:10,when:"ce mois-ci",
+     t:"Note tes dépenses 10 jours différents"}];
+}
+function awardChallenges(){
+  S.chDone=S.chDone||{};
+  let n=0;
+  challenges().forEach(c=>{if(c.g>=c.n&&S.chDone[c.key]==null){S.chDone[c.key]=c.xp;n++}});
+  if(n){S.updatedAt=Date.now();saveLocal()}
+  return n;
+}
 function vToday(){
   const over=C.left<0, pct=C.energy>0?C.left/C.energy:0;
   const todays=S.expenses.filter(e=>e.date===C.todayS);
   const dName=JOURS[C.t.getDay()]+" "+C.t.getDate()+" "+MOIS[C.t.getMonth()];
-  const wd=(C.t.getDay()+6)%7; let zero=0; for(let d=C.today-wd;d<C.today;d++){if(d>=1&&C.status[d]&&C.perDay[d]===0)zero++}
-  const pace=C.today/C.D; const onPace=S.envelopes.filter(e=>{const sp=C.mExp.filter(x=>x.envId===e.id).reduce((a,x)=>a+x.amount,0);return sp<=e.budget*Math.min(1,pace+.08)}).length;
-  const logged=new Set(C.mExp.map(e=>e.date)).size;
-  const ch=[
-    {g:C.streak,n:C.streak>=7?14:C.streak>=3?7:3,t:"Série sous l'énergie du jour"},
-    {g:zero,n:2,t:"Jours sans aucune dépense cette semaine"},
-    {g:onPace,n:S.envelopes.length||1,t:"Sacoches au bon rythme"},
-    {g:logged,n:10,t:"Jours où tu as noté tes dépenses"}];
+  const ch=challenges();
   return [payCard(),
   `<section class="card"><div class="energy">${potionSVG(over?1:pct,over)}<div style="min-width:0">
     <span class="eyebrow">Énergie du jour · ${esc(dName)}</span>
@@ -874,8 +899,12 @@ function vToday(){
   `<section class="card"><div class="sec-head"><h2>Aujourd'hui</h2><button class="linkbtn press" data-act="add">+ Dépense</button></div>
     <div class="ledger">${todays.length?todays.slice().reverse().map(rowExp).join(""):`<p class="empty">Rien de noté aujourd'hui. Une journée sans dépense compte pour ton défi de la semaine.</p>`}</div></section>`,
   `<section class="route"><div class="sec-head"><h2>Le sentier de ${C.cname}</h2><span class="eyebrow">${C.cy.label||"passages obligés · boss · quêtes"}</span></div>${routeHTML()}</section>`,
-  `<section class="card"><div class="sec-head"><h2>Défis</h2><span class="eyebrow">se renouvellent seuls</span></div>
-    <div class="challenges">${ch.map((c,i)=>{const done=c.g>=c.n,v=Math.min(c.g,c.n);return `<div class="ch ${done?"done":""}" style="--i:${i}"><div class="medal">${done?IC.wand:v}</div><div><b>${c.t}</b><div class="mini"><span style="width:${v/c.n*100}%"></span></div></div>${done?'<span class="pill good">Réussi</span>':`<span class="pill mute">${v}/${c.n}</span>`}</div>`}).join("")}</div></section>`];
+  `<section class="card"><div class="sec-head"><h2>Défis</h2><span class="eyebrow">chacun rapporte de l'XP</span></div>
+    <div class="challenges">${ch.map((c,i)=>{const got=(S.chDone||{})[c.key]!=null,done=got||c.g>=c.n,v=Math.min(c.g,c.n);
+      return `<div class="ch ${done?"done":""}" style="--i:${i}"><div class="medal">${done?IC.wand:v}</div>
+      <div><b>${c.t}</b><div class="chmeta">${c.when} · <i class="xp">+${c.xp} XP</i></div>
+      <div class="mini"><span style="width:${Math.round(v/c.n*100)}%"></span></div></div>
+      ${done?'<span class="pill good">Gagné</span>':`<span class="pill mute">${v}/${c.n}</span>`}</div>`}).join("")}</div></section>`];
 }
 function payCard(){
   const pay=S.pays[C.mk], base=+S.income||0, d1=C.dateAt(1);
