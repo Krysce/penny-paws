@@ -449,6 +449,7 @@ const monthKey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1);
 const dim=d=>new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
 const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
 const JOURS=["dim.","lun.","mar.","mer.","jeu.","ven.","sam."];
+const MOIS3=["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
 const parseD=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
 const fmtD=s=>{const d=parseD(s);return d.getDate()+" "+MOIS[d.getMonth()]};
 const REDUCE=matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -952,7 +953,7 @@ function routeHTML(){
   const ti=pts.findIndex(p=>p.d===C.today);
   const pathD=a=>a.length<2?"":a.map((p,i)=>{if(!i)return `M${p.x} ${p.y}`;const q=a[i-1],mx=(q.x+p.x)/2;return `C${mx} ${q.y} ${mx} ${p.y} ${p.x} ${p.y}`}).join(" ");
   const done=pts.slice(0,ti+1), rest=pts.slice(Math.max(0,ti));
-  let nodes="";
+  let nodes="", pendingM=false;
   pts.forEach((p,i)=>{
     const isT=p.d===C.today, st=C.status[p.d];
     const dt=C.dateAt(p.d);
@@ -961,7 +962,14 @@ function routeHTML(){
     else if(st==="win")inner=`<span style="color:#4FF0D8;filter:drop-shadow(0 0 6px #4FF0D8);transform:rotate(${i%2?14:-14}deg);display:block">${IC.paw}</span>`;
     else if(st==="lose")inner=`<span style="color:#FF7EC8;opacity:.75;transform:rotate(${i%2?14:-14}deg);display:block">${IC.paw}</span>`;
     else inner=`<span class="dot"></span>`;
-    const lbl=isT?"Aujourd'hui":JOURS[dt.getDay()]+" "+dt.getDate();
+    /* Un cycle de paie chevauche deux mois : sans le nom du mois, "ven. 30" en
+       tete de sentier se lit comme une fin de mois. On le precise au premier
+       jour et a chaque changement de mois. */
+    const prevM=i?C.dateAt(pts[i-1].d).getMonth():-1;
+    let showM=dt.getMonth()!==prevM||pendingM;
+    pendingM=false;
+    if(showM&&isT){showM=false;pendingM=true}   // "Aujourd'hui oct." se lit mal : on reporte
+    const lbl=(isT?"Aujourd'hui":JOURS[dt.getDay()]+" "+dt.getDate())+(showM?" "+MOIS3[dt.getMonth()]:"");
     nodes+=`<div class="node ${isT?"today":"paw"}" style="left:${p.x}px;top:${p.y}px">${inner}<span class="lbl">${lbl}</span></div>`;
     if(chips[p.d].length)nodes+=`<div class="hbub" style="left:${p.x}px;bottom:${H-p.y+36}px">${chips[p.d].join("")}</div>`;
   });
