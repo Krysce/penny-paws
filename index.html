@@ -204,7 +204,11 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 .track.horiz::-webkit-scrollbar-thumb{background:rgba(185,162,255,.32);border-radius:4px}
 .track.horiz::-webkit-scrollbar-track{background:transparent}
 .hbub{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;width:118px}
-.hbub .bub2{max-width:100%;text-align:center;overflow-wrap:anywhere}
+.hbub .bub2{max-width:100%;text-align:center;overflow-wrap:anywhere;transition:opacity .3s,filter .3s}
+.hbub.soon .bub2{opacity:.42;filter:grayscale(.6)}
+.hbub.past .bub2{opacity:.7}
+.hbub.past .bub2.paid{opacity:.45}
+.hbub.now .bub2{box-shadow:0 0 0 2px rgba(79,240,216,.85),0 0 20px rgba(79,240,216,.45)}
 .hbub .bub2.group{font-size:10.8px;letter-spacing:-.1px}
 .hbub .bub2.group{white-space:normal}
 @media (max-width:639px){.hbub{width:94px}}
@@ -997,7 +1001,10 @@ function routeHTML(){
     if(showM&&isT){showM=false;pendingM=true}   // "Aujourd'hui oct." se lit mal : on reporte
     const lbl=(isT?"Aujourd'hui":JOURS[dt.getDay()]+" "+dt.getDate())+(showM?" "+MOIS3[dt.getMonth()]:"");
     nodes+=`<div class="node ${isT?"today":"paw"}" style="left:${p.x}px;top:${p.y}px">${inner}<span class="lbl">${lbl}</span></div>`;
-    if(chips[p.d].length)nodes+=`<div class="hbub" style="left:${p.x}px;bottom:${H-p.y+36}px">${chips[p.d].join("")}</div>`;
+    /* Trois etats : a venir en retrait, aujourd'hui en avant, passe efface.
+       Sans ca, un prelevement du 20 crie aussi fort que celui de ce matin. */
+    const when=p.d<C.today?"past":p.d===C.today?"now":"soon";
+    if(chips[p.d].length)nodes+=`<div class="hbub ${when}" style="left:${p.x}px;bottom:${H-p.y+36}px">${chips[p.d].join("")}</div>`;
   });
   return `${laneHTML()}
   <div class="track horiz" style="height:${H+SB}px"><div class="strip" style="width:${TW}px;height:${H}px"><svg class="path" viewBox="0 0 ${TW} ${H}" aria-hidden="true">
