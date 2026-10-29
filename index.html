@@ -873,7 +873,7 @@ function vToday(){
     <div class="e-sub">${C.envTotal<=0?`Ajoute le budget de tes sacoches pour que je calcule ton énergie du jour.`:over?`Dépassé de ${eur(-C.left)}. Pas grave, demain on recalcule.`:C.envLeft<=0&&C.energy<=0?`Tes sacoches sont vides jusqu'à ta paie du ${C.dateAt(C.D).getDate()+1>dim(C.dateAt(C.D))?1:C.dateAt(C.D).getDate()+1}. Chaque dépense d'ici là creuse le découvert.`:C.spentToday>0?`Ce qu'il te reste sur ${eur(C.energy)} pour aujourd'hui.`:`Ton maximum pour aujourd'hui.`}</div>${coffreLine()}${acctLine()}</div></div></section>`,
   `<section class="card"><div class="sec-head"><h2>Aujourd'hui</h2><button class="linkbtn press" data-act="add">+ Dépense</button></div>
     <div class="ledger">${todays.length?todays.slice().reverse().map(rowExp).join(""):`<p class="empty">Rien de noté aujourd'hui. Une journée sans dépense compte pour ton défi de la semaine.</p>`}</div></section>`,
-  `<section class="route"><div class="sec-head"><h2>Le sentier de ${C.cname}</h2><span class="eyebrow">${C.cy.label||"péages · boss · quêtes"}</span></div>${routeHTML()}</section>`,
+  `<section class="route"><div class="sec-head"><h2>Le sentier de ${C.cname}</h2><span class="eyebrow">${C.cy.label||"passages obligés · boss · quêtes"}</span></div>${routeHTML()}</section>`,
   `<section class="card"><div class="sec-head"><h2>Défis</h2><span class="eyebrow">se renouvellent seuls</span></div>
     <div class="challenges">${ch.map((c,i)=>{const done=c.g>=c.n,v=Math.min(c.g,c.n);return `<div class="ch ${done?"done":""}" style="--i:${i}"><div class="medal">${done?IC.wand:v}</div><div><b>${c.t}</b><div class="mini"><span style="width:${v/c.n*100}%"></span></div></div>${done?'<span class="pill good">Réussi</span>':`<span class="pill mute">${v}/${c.n}</span>`}</div>`}).join("")}</div></section>`];
 }
@@ -994,10 +994,10 @@ function vBoss(){
   <p class="lede">Chaque crédit est un monstre de la forêt. Chaque mensualité payée lui retire des points de vie. Rembourser un peu plus tôt, c'est un coup critique.</p>
   <div class="bosses">${boss||'<p class="empty">Aucun crédit en cours. Bravo !</p>'}</div>
   ${dead.length?`<p class="lede" style="margin-top:12px">Vaincus : ${dead.map(d=>"<b>"+esc(d.name)+"</b>").join(", ")}</p>`:""}</section>`,
-  `<section class="card"><div class="sec-head"><h2>Péages du mois</h2><span class="eyebrow num">${eur0(paidT)} / ${eur0(C.fixedTotal)} payés</span></div>
+  `<section class="card"><div class="sec-head"><h2>Les passages obligés</h2><span class="eyebrow num">${eur0(paidT)} / ${eur0(C.fixedTotal)} payés</span></div>
   <p class="lede">Tes prélèvements fixes. Coche-les quand ils passent sur ton compte.</p>
   <div class="tolls">${tolls||'<p class="empty">Ajoute tes prélèvements : électricité, box, assurances…</p>'}</div>
-  <div style="margin-top:10px"><button class="linkbtn press" data-new="fixed">+ Péage</button></div></section>`];
+  <div style="margin-top:10px"><button class="linkbtn press" data-new="fixed">+ Passage obligé</button></div></section>`];
 }
 
 /* ---- Quêtes ---- */
@@ -1125,7 +1125,7 @@ function vVault(){
   `<section class="card"><div class="sec-head"><h2>Le plan du mois</h2><button class="linkbtn press" data-act="income">Ma paie</button></div>
   <div class="plan">
     <div class="l"><span>Paie de base</span><span>${eur(S.income)}</span></div>
-    <div class="l"><span>Péages (prélèvements)</span><span>−${eur(C.fixedTotal)}</span></div>
+    <div class="l"><span>Passages obligés</span><span>−${eur(C.fixedTotal)}</span></div>
     <div class="l"><span>Boss (crédits)</span><span>−${eur(C.creditTotal)}</span></div>
     <div class="l"><span>Quêtes à préparer</span><span>−${eur(C.questTotal)}</span></div>
     <div class="l"><span>Sacoches du quotidien</span><span>−${eur(C.envTotal)}</span></div>
@@ -1248,7 +1248,7 @@ document.addEventListener("click",e=>{
     S.skip[k]=true;delete (S.paid[C.mk]||{})[d.skip];delete S.paidAt[k];
     return commit("En pause ce mois-ci")}
   if(d.unhit)return unhit(d.unhit);
-  if(d.toll){const P=S.paid[C.mk]=S.paid[C.mk]||{};const on=!P[d.toll];S.noauto=S.noauto||{};if(on){P[d.toll]=true;S.paidAt[C.mk+d.toll]=Date.now();delete S.noauto[C.mk+d.toll]}else{delete P[d.toll];delete S.paidAt[C.mk+d.toll];S.noauto[C.mk+d.toll]=true}if(on){sfx.pop();const c=center(a);sparkles(c.x,c.y,10,"#4FF0B0")}return commit(on?"Péage payé":"")}
+  if(d.toll){const P=S.paid[C.mk]=S.paid[C.mk]||{};const on=!P[d.toll];S.noauto=S.noauto||{};if(on){P[d.toll]=true;S.paidAt[C.mk+d.toll]=Date.now();delete S.noauto[C.mk+d.toll]}else{delete P[d.toll];delete S.paidAt[C.mk+d.toll];S.noauto[C.mk+d.toll]=true}if(on){sfx.pop();const c=center(a);sparkles(c.x,c.y,10,"#4FF0B0")}return commit(on?"Prélèvement payé":"")}
   if(d.qadd)return openAmount("Mettre de côté pour la quête","Montant",v=>{const q=S.quests.find(x=>x.id===d.qadd);q.saved=Math.round((q.saved+v)*100)/100;sfx.coin();react("happy",2500,"Une quête mieux préparée, c'est moins de stress !");commit(`<b>+${eur0(v)}</b> pour ${esc(q.name)}`)});
   if(d.qdone){const q=S.quests.find(x=>x.id===d.qdone);S.questsDone++;if(q.yearly){const dt=parseD(q.date);dt.setFullYear(dt.getFullYear()+1);q.date=ymd(dt);q.saved=0}else S.quests=S.quests.filter(x=>x!==q);const c=center(a);confetti(c.x,c.y,90);sfx.win();react("proud",3500,"Quête accomplie, sans stress ni découvert !");return commit("Quête accomplie <b>+40 XP</b>")}
 });
@@ -1316,7 +1316,7 @@ function act(k,btn){
 /* ================= Formulaires ================= */
 const SCH={
   envelope:{title:"Sacoche",list:"envelopes",f:[["name","Nom","text"],["budget","Budget du mois (€)","money"]]},
-  fixed:{title:"Péage",list:"fixed",f:[["name","Nom du prélèvement","text"],["amount","Montant (€)","money"],["day","Jour du mois","day"]]},
+  fixed:{title:"Passage obligé",list:"fixed",f:[["name","Nom du prélèvement","text"],["amount","Montant (€)","money"],["day","Jour du mois","day"]]},
   credit:{title:"Boss (crédit)",list:"credits",f:[["name","Nom","text"],["monthly","Mensualité (€)","money"],["remaining","Capital restant dû (€)","money"],["total","Montant emprunté au départ (€)","money"],["day","Jour du prélèvement","day"]]},
   quest:{title:"Quête",list:"quests",f:[["name","Nom","text"],["date","Date","date"],["target","Budget visé (€)","money"],["saved","Déjà mis de côté (€)","money"],["yearly","Revient chaque année","check"]]},
   settings:{title:"Ma paie",f:[["income","Paie de base, partie fixe (€)","money"],["payDay","Jour où tombe la paie","day"]]},
@@ -1416,7 +1416,7 @@ function exportCSV(){
   const lines=[["Date","Sacoche","Note","Montant"].join(";")];
   S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>lines.push([e.date,q(S.envelopes.find(x=>x.id===e.envId)?.name||""),q(e.label),n(e.amount)].join(";")));
   lines.push("","Sacoches;Budget mensuel");S.envelopes.forEach(e=>lines.push(q(e.name)+";"+n(e.budget)));
-  lines.push("","Péages;Montant;Jour");S.fixed.forEach(f=>lines.push(q(f.name)+";"+n(f.amount)+";"+f.day));
+  lines.push("","Passages obligés;Montant;Jour");S.fixed.forEach(f=>lines.push(q(f.name)+";"+n(f.amount)+";"+f.day));
   lines.push("","Crédits;Mensualité;Restant dû;Emprunté");S.credits.forEach(c=>lines.push(q(c.name)+";"+n(c.monthly)+";"+n(c.remaining)+";"+n(c.total)));
   lines.push("","Quêtes;Date;Objectif;Mis de côté");S.quests.forEach(x=>lines.push(q(x.name)+";"+x.date+";"+n(x.target)+";"+n(x.saved)));
   lines.push("","Coffre;"+n(S.vault));
