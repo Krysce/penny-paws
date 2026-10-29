@@ -1245,7 +1245,13 @@ function drawAll(now){
     const m=$("#mascot").getBoundingClientRect(),sp=$("#spot").getBoundingClientRect();
     const scale=innerWidth>=980?sp.height/180:sp.height/196, rx=sp.left-m.left+sp.width*.58, ry=sp.bottom-m.top-6;
     if(tab==="vault")glade(g,W,H,t,C.tier,{rx,ry,rs:scale});
-    else{forest(g,W,H,t,{photo:true,mush:3+Math.min(3,C.tier>>1),fireflies:10+C.streak*2});lanterns(g,W,H,t);raccoon(g,rx,ry,scale,moodNow(),t,{crown:C.tier>=12,glow:Math.min(1,.35+C.streak*.08+C.tier*.03)})}}
+    else{forest(g,W,H,t,{photo:true,mush:3+Math.min(3,C.tier>>1),fireflies:10+C.streak*2});lanterns(g,W,H,t);
+      /* Sans sol peint, le raton semblait leviter : une ombre et une flaque de
+         lumiere sous ses pattes le reposent sur le chemin de la photo. */
+      g.save();glow(g,rx,ry+2*scale,78*scale,CY,.14);
+      g.fillStyle="rgba(6,4,26,.42)";g.beginPath();g.ellipse(rx,ry+3*scale,44*scale,10*scale,0,0,7);g.fill();
+      g.fillStyle="rgba(6,4,26,.26)";g.beginPath();g.ellipse(rx,ry+4*scale,64*scale,14*scale,0,0,7);g.fill();g.restore();
+      raccoon(g,rx,ry,scale,moodNow(),t,{crown:C.tier>=12,glow:Math.min(1,.35+C.streak*.08+C.tier*.03)})}}
   const gc=$("#glade");if(gc){const g=fit(gc);glade(g,gc._w,gc._h,t,C.tier)}
   document.querySelectorAll("canvas[data-boss]").forEach(cv=>{const c=S.credits.find(x=>x.id===cv.dataset.boss);if(c){const g=fit(cv);monster(g,cv._w,cv._h,c,t)}});
   const cc=$("#celebCanvas");if(cc){const g=fit(cc);g.clearRect(0,0,cc._w,cc._h);glow(g,cc._w/2,cc._h*.55,cc._w*.6,CY,.35);raccoon(g,cc._w/2+10,cc._h-8,cc._h/180,"proud",t,{glow:1,crown:C.tier>=12})}
