@@ -196,7 +196,7 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 .track.horiz::-webkit-scrollbar{height:7px}
 .track.horiz::-webkit-scrollbar-thumb{background:rgba(185,162,255,.32);border-radius:4px}
 .track.horiz::-webkit-scrollbar-track{background:transparent}
-.hbub{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;width:118px}
+.hbub{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;width:118px}
 .hbub .bub2{max-width:100%;text-align:center}
 .hbub .bub2.group{white-space:normal}
 @media (max-width:639px){.hbub{width:94px}}
@@ -900,10 +900,13 @@ function routeHTML(){
   /* La hauteur suit le nombre reel de bulles : un mois sans prelevement ne
      reserve pas la place d'un mois charge. */
   const maxCh=days.reduce((m,d)=>Math.max(m,chips[d].length),0);
-  const DW=mob?106:130, PAD=mob?52:72, AMP=mob?14:20, CH=mob?38:42;
+  /* Une bulle peut tenir sur trois lignes dans une colonne etroite : on
+     reserve cette place, sinon elle se fait rogner par le haut. */
+  const DW=mob?106:130, PAD=mob?52:72, AMP=mob?14:20, CH=mob?54:60;
   const TOP=maxCh?maxCh*CH+AMP+16:AMP+18;
-  const BASE=TOP+(mob?26:30), H=BASE+(mob?44:50);
-  const BUBH=Math.max(30,BASE-AMP-34);
+  const BASE=TOP+(mob?26:30);
+  const H=BASE+AMP+(mob?40:44);          // la place des etiquettes de jour
+  const SB=14;                            // et celle de la barre de defilement
   const pts=days.map((d,i)=>({d,x:PAD+i*DW,y:BASE+AMP*Math.sin(i*.8+.4)}));
   const TW=PAD*2+Math.max(0,days.length-1)*DW;
   const ti=pts.findIndex(p=>p.d===C.today);
@@ -920,10 +923,10 @@ function routeHTML(){
     else inner=`<span class="dot"></span>`;
     const lbl=isT?"Aujourd'hui":JOURS[dt.getDay()]+" "+dt.getDate();
     nodes+=`<div class="node ${isT?"today":"paw"}" style="left:${p.x}px;top:${p.y}px">${inner}<span class="lbl">${lbl}</span></div>`;
-    if(chips[p.d].length)nodes+=`<div class="hbub" style="left:${p.x}px;height:${BUBH}px">${chips[p.d].join("")}</div>`;
+    if(chips[p.d].length)nodes+=`<div class="hbub" style="left:${p.x}px;bottom:${H-p.y+36}px">${chips[p.d].join("")}</div>`;
   });
   return `${laneHTML()}
-  <div class="track horiz" style="height:${H}px"><div class="strip" style="width:${TW}px;height:${H}px"><svg class="path" viewBox="0 0 ${TW} ${H}" aria-hidden="true">
+  <div class="track horiz" style="height:${H+SB}px"><div class="strip" style="width:${TW}px;height:${H}px"><svg class="path" viewBox="0 0 ${TW} ${H}" aria-hidden="true">
   <path d="${pathD(rest)}" fill="none" stroke="#6E62C8" stroke-width="4" stroke-dasharray="2 10" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
   <path d="${pathD(done)}" fill="none" stroke="#4FF0D8" stroke-width="14" stroke-linecap="round" opacity=".18" vector-effect="non-scaling-stroke"/>
   <path d="${pathD(done)}" fill="none" stroke="#A8FFF0" stroke-width="4.5" stroke-dasharray="14 9" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
