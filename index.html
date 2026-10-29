@@ -58,7 +58,7 @@ h1,h2,h3{font-family:var(--f-display);line-height:1.05;margin:0;text-wrap:balanc
 }
 
 /* ---------- Carte mascotte ---------- */
-.mascot{position:relative;background:linear-gradient(180deg,#0A1440,#183A86 55%,#2A1460);color:#fff;border-radius:0 0 32px 32px;padding-block:14px 18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:hidden;box-shadow:0 20px 50px -20px rgba(0,0,0,.9),0 0 0 1px var(--edge)}
+.mascot{position:relative;background:linear-gradient(180deg,rgba(8,12,48,.30),rgba(10,8,40,.70) 70%,rgba(12,10,36,.94)),url("foret.webp") center 40%/cover no-repeat,linear-gradient(180deg,#0A1440,#183A86 55%,#2A1460);color:#fff;border-radius:0 0 32px 32px;padding-block:14px 18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:hidden;box-shadow:0 20px 50px -20px rgba(0,0,0,.9),0 0 0 1px var(--edge)}
 .mascot>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .m-top,.m-body{position:relative;z-index:1}
 .m-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -580,7 +580,25 @@ const CY="rgba(79,240,216,A)",PK="rgba(255,126,200,A)",VI="rgba(185,162,255,A)",
 function rand(i){const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)}
 
 /* ================= Forêt enchantée ================= */
+/* Les lanternes de la photo sont des pixels figes : on pose un halo sur
+   chacune et on le fait respirer. Les reperes suivent le cadrage "cover"
+   de l'image de fond, pour rester en place a toutes les largeurs. */
+const LANT=[{"u":0.169,"v":0.139,"r":0.88,"w":1},{"u":0.794,"v":0.263,"r":0.87,"w":1},{"u":0.882,"v":0.204,"r":0.86,"w":0},{"u":0.273,"v":0.289,"r":0.75,"w":0},{"u":0.371,"v":0.373,"r":0.7,"w":1},{"u":0.431,"v":0.349,"r":0.67,"w":1},{"u":0.115,"v":0.475,"r":0.55,"w":0},{"u":0.554,"v":0.362,"r":0.53,"w":1},{"u":0.754,"v":0.358,"r":0.53,"w":1},{"u":0.552,"v":0.146,"r":0.52,"w":1},{"u":0.389,"v":0.202,"r":0.48,"w":1},{"u":0.642,"v":0.211,"r":0.47,"w":0},{"u":0.592,"v":0.416,"r":0.44,"w":1},{"u":0.742,"v":0.107,"r":0.38,"w":0}];
+const LANT_W="rgba(255,205,120,A)", LANT_T="rgba(120,255,226,A)";
+function lanterns(g,W,H,t){
+  const IW=1280,IH=714,s=Math.max(W/IW,H/IH);
+  const ox=(W-IW*s)/2, oy=(H-IH*s)*0.40;
+  for(let i=0;i<LANT.length;i++){
+    const L=LANT[i];
+    const x=ox+L.u*IW*s, y=oy+L.v*IH*s;
+    if(x<-60||x>W+60||y<-60||y>H+60)continue;
+    const p=.66+.34*Math.sin(t*(1.05+(i%5)*.19)+i*1.7);
+    const r=(14+L.r*30)*Math.max(.55,Math.min(1.6,s*1.2));
+    glow(g,x,y,r*(.85+.3*p),L.w?LANT_W:LANT_T,.42*p);
+  }
+}
 function forest(g,W,H,t,o={}){
+  if(o.photo){g.clearRect(0,0,W,H)}else{
   const sk=g.createLinearGradient(0,0,0,H);sk.addColorStop(0,"#081038");sk.addColorStop(.45,"#173C8C");sk.addColorStop(1,"#2A1460");g.fillStyle=sk;g.fillRect(0,0,W,H);
   glow(g,W*.5,H*.45,Math.max(W,H)*.55,CY,.28);
   // étoiles
@@ -595,6 +613,7 @@ function forest(g,W,H,t,o={}){
     g.fillStyle="#A8336F";for(let i=0;i<9;i++){const lx=x+k*(30+rand(i*3+j)*90),ly=H*(.03+rand(i+j*7)*.22);g.save();g.translate(lx,ly);g.rotate(rand(i)*6+Math.sin(t+i)*.1);g.beginPath();g.ellipse(0,0,7,3.5,0,0,7);g.fill();g.restore()}});
   // sol
   g.fillStyle="#1B0F4A";g.beginPath();g.moveTo(0,H);for(let x=0;x<=W;x+=12)g.lineTo(x,H*.86-Math.sin(x/W*6+1)*6);g.lineTo(W,H);g.fill();
+  }
   // champignons lumineux
   const mush=(x,y,s,col,ph)=>{const p=.75+.25*Math.sin(t*2+ph);glow(g,x,y-10*s,34*s,col,.55*p);g.fillStyle="#D8D2FF";g.beginPath();g.moveTo(x-2.5*s,y);g.quadraticCurveTo(x-4*s,y-8*s,x-1.5*s,y-12*s);g.lineTo(x+1.5*s,y-12*s);g.quadraticCurveTo(x+4*s,y-8*s,x+2.5*s,y);g.fill();g.fillStyle=col.replace("A",.95);g.beginPath();g.ellipse(x,y-12*s,10*s,6*s,0,Math.PI,0);g.fill();g.fillStyle="rgba(255,255,255,.75)";g.beginPath();g.arc(x-4*s,y-14*s,1.4*s,0,7);g.arc(x+3*s,y-15*s,1.1*s,0,7);g.fill()};
   const n=o.mush??3;
@@ -1226,7 +1245,7 @@ function drawAll(now){
     const m=$("#mascot").getBoundingClientRect(),sp=$("#spot").getBoundingClientRect();
     const scale=innerWidth>=980?sp.height/180:sp.height/196, rx=sp.left-m.left+sp.width*.58, ry=sp.bottom-m.top-6;
     if(tab==="vault")glade(g,W,H,t,C.tier,{rx,ry,rs:scale});
-    else{forest(g,W,H,t,{mush:3+Math.min(3,C.tier>>1),fireflies:10+C.streak*2});raccoon(g,rx,ry,scale,moodNow(),t,{crown:C.tier>=12,glow:Math.min(1,.35+C.streak*.08+C.tier*.03)})}}
+    else{forest(g,W,H,t,{photo:true,mush:3+Math.min(3,C.tier>>1),fireflies:10+C.streak*2});lanterns(g,W,H,t);raccoon(g,rx,ry,scale,moodNow(),t,{crown:C.tier>=12,glow:Math.min(1,.35+C.streak*.08+C.tier*.03)})}}
   const gc=$("#glade");if(gc){const g=fit(gc);glade(g,gc._w,gc._h,t,C.tier)}
   document.querySelectorAll("canvas[data-boss]").forEach(cv=>{const c=S.credits.find(x=>x.id===cv.dataset.boss);if(c){const g=fit(cv);monster(g,cv._w,cv._h,c,t)}});
   const cc=$("#celebCanvas");if(cc){const g=fit(cc);g.clearRect(0,0,cc._w,cc._h);glow(g,cc._w/2,cc._h*.55,cc._w*.6,CY,.35);raccoon(g,cc._w/2+10,cc._h-8,cc._h/180,"proud",t,{glow:1,crown:C.tier>=12})}
